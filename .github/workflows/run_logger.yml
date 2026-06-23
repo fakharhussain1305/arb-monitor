@@ -1,0 +1,37 @@
+name: Arbitrage Logger
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  log:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run logger
+        env:
+          PMXT_API_KEY: ${{ secrets.PMXT_API_KEY }}
+        run: python arb_logger.py
+
+      - name: Commit results
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add arb_opportunities.csv
+          git diff --staged --quiet || git commit -m "log: $(date -u +'%Y-%m-%d %H:%M')"
+          git push
