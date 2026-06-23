@@ -1,16 +1,16 @@
-cat > ~/Downloads/arb_logger_final.py << 'EOF'
 import pmxt
 import csv
 import os
 from datetime import datetime, timezone
 
-PMXT_KEY  = os.environ.get("PMXT_API_KEY")
+PMXT_KEY = os.environ.get("PMXT_API_KEY")
 if not PMXT_KEY:
     raise ValueError("PMXT_API_KEY environment variable not set")
-LOG_FILE  = "arb_opportunities.csv"
 
-TRUSTED   = {'polymarket', 'kalshi', 'limitless'}
-FIELDS    = [
+LOG_FILE = "arb_opportunities.csv"
+
+TRUSTED = {'polymarket', 'kalshi', 'limitless'}
+FIELDS = [
     'timestamp', 'title', 'buy_venue', 'sell_venue',
     'buy_price', 'sell_price', 'spread_pct',
     'confidence', 'relation',
@@ -19,7 +19,7 @@ FIELDS    = [
     'market_id_a', 'market_id_b', 'trusted'
 ]
 
-router    = pmxt.Router(pmxt_api_key=PMXT_KEY)
+router = pmxt.Router(pmxt_api_key=PMXT_KEY)
 timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 try:
@@ -79,5 +79,3 @@ for opp in sorted(opps, key=lambda x: x.spread, reverse=True)[:3]:
         print(f"  {trusted_flag} {opp.spread*100:.2f}% | "
               f"{opp.buy_venue}->{opp.sell_venue} | "
               f"{opp.market_a.title[:45]}")
-EOF
-python3 ~/Downloads/arb_logger_final.py
