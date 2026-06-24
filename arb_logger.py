@@ -1,16 +1,19 @@
 import pmxt
 import csv
 import os
+import sys
+import time
 from datetime import datetime, timezone
 
 PMXT_KEY = os.environ.get("PMXT_API_KEY")
 if not PMXT_KEY:
     raise ValueError("PMXT_API_KEY environment variable not set")
 
-LOG_FILE = "arb_opportunities.csv"
+print(f"API key: {PMXT_KEY[:8]}...{PMXT_KEY[-4:]}")
 
-TRUSTED = {'polymarket', 'kalshi', 'limitless'}
-FIELDS = [
+LOG_FILE = "arb_opportunities.csv"
+TRUSTED  = {'polymarket', 'kalshi', 'limitless'}
+FIELDS   = [
     'timestamp', 'title', 'buy_venue', 'sell_venue',
     'buy_price', 'sell_price', 'spread_pct',
     'confidence', 'relation',
@@ -19,15 +22,29 @@ FIELDS = [
     'market_id_a', 'market_id_b', 'trusted'
 ]
 
-router = pmxt.Router(pmxt_api_key=PMXT_KEY)
 timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
-try:
-    opps = router.fetch_arbitrage(limit=100)
-except Exception as e:
-    print(f"[{timestamp}] Fetch error: {e}")
-    raise
+# --- RETRY LOGIC ---
+router = pmxt.Router(pmxt_api_key=PMXT_KEY)
+opps   = None
 
+for attempt in range(5):
+    try:
+        opps = router.fetch_arbitrage(limit=100)
+        print(f"Fetched {len(opps)} opportunities on attempt {attempt+1}")
+        break
+    except Exception as e:
+        print(f"Attempt {attempt+1}/5 failed: {e}")
+        if attempt < 4:
+            wait = (attempt + 1) * 10
+            print(f"Waiting {wait}s before retry...")
+            time.sleep(wait)
+
+if opps is None:
+    print(f"[{timestamp}] All 5 attempts failed — skipping this run")
+    sys.exit(0)  # Exit cleanly so GitHub doesn't mark as failed
+
+# --- LOG RESULTS ---
 file_exists = os.path.isfile(LOG_FILE)
 logged = 0
 
@@ -70,12 +87,12 @@ trusted_count = sum(
     and o.spread > 0
 )
 
-print(f"[{timestamp}] Total: {logged} | Trusted: {trusted_count}")
+print(f"[{timestamp}] Logged: {logged} | Trusted: {trusted_count}")
 for opp in sorted(opps, key=lambda x: x.spread, reverse=True)[:3]:
     if opp.spread > 0:
-        trusted_flag = "✓" if (
+        flag = "✓" if (
             opp.buy_venue in TRUSTED and opp.sell_venue in TRUSTED
         ) else "✗"
-        print(f"  {trusted_flag} {opp.spread*100:.2f}% | "
+        print(f"  {flag} {opp.spread*100:.2f}% | "
               f"{opp.buy_venue}->{opp.sell_venue} | "
               f"{opp.market_a.title[:45]}")
