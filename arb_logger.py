@@ -9,7 +9,8 @@ PMXT_KEY = os.environ.get("PMXT_API_KEY")
 if not PMXT_KEY:
     raise ValueError("PMXT_API_KEY environment variable not set")
 
-print(f"API key: {PMXT_KEY[:8]}...{PMXT_KEY[-4:]}")
+# Never print any part of the key: Actions logs on a public repo are public,
+# and GitHub only masks a secret when its full value appears.
 
 LOG_FILE = "arb_opportunities.csv"
 TRUSTED  = {'polymarket', 'kalshi', 'limitless'}
